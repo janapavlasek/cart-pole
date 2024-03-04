@@ -1,2 +1,2 @@
-# cart-pole
-Cart Pole simulation for control
+# digit-data-tool
+Tool for uploading handwritten digits.
