@@ -1,2 +1,3 @@
-# digit-data-tool
-Tool for uploading handwritten digits.
+# Cart Pole App
+
+Web application for cart pole simulation.
