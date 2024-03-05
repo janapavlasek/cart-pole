@@ -1,5 +1,6 @@
 import React from "react";
 import { Slider, Typography, Grid } from '@mui/material';
+import Plot from 'react-plotly.js';
 
 import {PIDController} from './control';
 
@@ -47,6 +48,9 @@ class SceneView extends React.Component {
       kp: DEFAULTS.KP,        // Proportional gain
       ki: DEFAULTS.KI,        // Integral gain
       kd: DEFAULTS.KD,        // Derivative gain
+      timeHistory: [],
+      xHistory: [],
+      thetaHistory: [],
     };
 
     this.cartpole = props.cartpole;
@@ -72,6 +76,13 @@ class SceneView extends React.Component {
     this.cartpole.setRandomState();
     this.pid.reset();
 
+    // Update histories for plotting
+    this.setState(prevState => ({
+      timeHistory: [],
+      xHistory: [],
+      thetaHistory: [],
+    }));
+
     if (this.state.done) this.startInterval();
   }
 
@@ -91,6 +102,14 @@ class SceneView extends React.Component {
       clearInterval(this.interval);
       this.setState({done: true});
     }
+    else {
+      // Update histories for plotting
+      this.setState(prevState => ({
+        timeHistory: [...prevState.timeHistory, prevState.timeHistory.length * this.dt],
+        xHistory: [...prevState.xHistory, state[0]],
+        thetaHistory: [...prevState.thetaHistory, state[2]],
+      }));
+    }
   }
 
   bump() {
@@ -104,6 +123,28 @@ class SceneView extends React.Component {
    *****************************/
 
   render() {
+
+    const { timeHistory, xHistory, thetaHistory } = this.state;
+
+    // Data for the Plot
+    const data = [
+      {
+        x: timeHistory,
+        y: xHistory,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'X Position',
+        marker: { color: '#156EB2' },
+      },
+      {
+        x: timeHistory,
+        y: thetaHistory,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Theta Angle',
+        marker: { color: '#B2156E' },
+      }
+    ];
 
     return (
       <div>
@@ -119,16 +160,38 @@ class SceneView extends React.Component {
           </button>
         </div>
         <div className="centered">
-        <div className="slider-wrapper">
-          <GainSlider label={"Kp"} value={this.state.kp} max={50}
-                      onChange={(_, v) => this.updateGains(v, this.state.ki, this.state.kd)} />
+          <div className="slider-wrapper">
+            <GainSlider label={"Kp"} value={this.state.kp} max={50}
+                        onChange={(_, v) => this.updateGains(v, this.state.ki, this.state.kd)} />
 
-          <GainSlider label={"Ki"} value={this.state.ki} max={50}
-                      onChange={(_, v) => this.updateGains(this.state.kp, v, this.state.kd)} />
+            <GainSlider label={"Ki"} value={this.state.ki} max={50}
+                        onChange={(_, v) => this.updateGains(this.state.kp, v, this.state.kd)} />
 
-          <GainSlider label={"Kd"} value={this.state.kd} max={50}
-                      onChange={(_, v) => this.updateGains(this.state.kp, this.state.ki, v)} />
-        </div></div>
+            <GainSlider label={"Kd"} value={this.state.kd} max={50}
+                        onChange={(_, v) => this.updateGains(this.state.kp, this.state.ki, v)} />
+          </div>
+        </div>
+
+        <Plot
+          data={data}
+          layout={ {
+            width: 600,
+            height: 250,
+            xaxis: {
+              title: 'Time (seconds)',
+            },
+            yaxis: {
+              title: 'Value',
+            },
+            margin: {
+              l: 50,
+              r: 50,
+              b: 50,
+              t: 50,
+              pad: 4
+            }
+          }}
+        />
       </div>
     );
   }
