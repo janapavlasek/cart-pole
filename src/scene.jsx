@@ -51,6 +51,7 @@ class SceneView extends React.Component {
       timeHistory: [],
       xHistory: [],
       thetaHistory: [],
+      plotWidth: 600,
     };
 
     this.cartpole = props.cartpole;
@@ -59,17 +60,38 @@ class SceneView extends React.Component {
 
     this.pid.setSetpoint(0);
     this.interval = null;
+    this.plotContainerRef = React.createRef(); // Create a ref for the plot container
   }
 
   componentDidMount() {
     this.startInterval();
+
+    this.handleResize();
+
+    // Add resize event listener
+    window.addEventListener('resize', this.handleResize);
+  }
+
+  componentWillUnmount() {
+    if (this.interval !== null) clearInterval(this.interval);
+
+    // Remove resize event listener
+    window.removeEventListener('resize', this.handleResize);
   }
 
   startInterval() {
     if (this.interval !== null) clearInterval(this.interval);
-    console.log("freq", Math.floor(this.dt * 1000))
     this.interval = setInterval(() => { this.step(); }, 50); // Update every 50ms
     this.setState({done: false});
+  }
+
+  handleResize = () => {
+    // Update the state with the new width
+    if (this.plotContainerRef.current) {
+      this.setState({
+        plotWidth: this.plotContainerRef.current.offsetWidth
+      });
+    }
   }
 
   resetCart() {
@@ -124,7 +146,8 @@ class SceneView extends React.Component {
 
   render() {
 
-    const { timeHistory, xHistory, thetaHistory } = this.state;
+    const { timeHistory, xHistory, thetaHistory, plotWidth } = this.state;
+    // console.log(this.refContainer.current.offsetWidth)
 
     // Data for the Plot
     const data = [
@@ -145,6 +168,24 @@ class SceneView extends React.Component {
         marker: { color: '#B2156E' },
       }
     ];
+
+    const layout = {
+      width: plotWidth,
+      height: 250,
+      xaxis: {
+        title: 'Time (seconds)',
+      },
+      yaxis: {
+        title: 'Value',
+      },
+      margin: {
+        l: 50,
+        r: 50,
+        b: 50,
+        t: 50,
+        pad: 4
+      }
+    };
 
     return (
       <div>
@@ -172,26 +213,12 @@ class SceneView extends React.Component {
           </div>
         </div>
 
-        <Plot
-          data={data}
-          layout={ {
-            width: 600,
-            height: 250,
-            xaxis: {
-              title: 'Time (seconds)',
-            },
-            yaxis: {
-              title: 'Value',
-            },
-            margin: {
-              l: 50,
-              r: 50,
-              b: 50,
-              t: 50,
-              pad: 4
-            }
-          }}
-        />
+        <div className="centered" ref={this.plotContainerRef}>
+          <Plot
+            data={data}
+            layout={layout}
+          />
+        </div>
       </div>
     );
   }
