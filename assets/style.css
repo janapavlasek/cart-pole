@@ -31,8 +31,12 @@ h1 a {
   border-bottom: 0;
 }
 
+a {
+  color: #156EB2;
+}
+
 a:hover {
-  color: #00274C !important;
+  color: #075E66 !important;
 }
 
 .centered > * {
