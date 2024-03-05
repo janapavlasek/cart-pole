@@ -9,8 +9,8 @@ import {PIDController} from './control';
 
 const DEFAULTS = {
   KP: 20,
-  KI: 0,
-  KD: 10,
+  KI: 1,
+  KD: 15,
 }
 
 
@@ -44,14 +44,14 @@ class SceneView extends React.Component {
     // React state.
     this.state = {
       done: false,
-      kp: 20,       // Proportional gain
-      ki: 0,        // Integral gain
-      kd: 10,       // Derivative gain
+      kp: DEFAULTS.KP,        // Proportional gain
+      ki: DEFAULTS.KI,        // Integral gain
+      kd: DEFAULTS.KD,        // Derivative gain
     };
 
     this.cartpole = props.cartpole;
-    this.pid = new PIDController(this.state.kp, this.state.ki, this.state.kd);
-    // this.lqr = new CartPoleLQRController();
+    this.dt = this.cartpole.dt;
+    this.pid = new PIDController(this.state.kp, this.state.ki, this.state.kd, this.dt);
 
     this.pid.setSetpoint(0);
     this.interval = null;
@@ -63,7 +63,8 @@ class SceneView extends React.Component {
 
   startInterval() {
     if (this.interval !== null) clearInterval(this.interval);
-    this.interval = setInterval(() => { this.step(); }, 100); // Update every 100ms
+    console.log("freq", Math.floor(this.dt * 1000))
+    this.interval = setInterval(() => { this.step(); }, 50); // Update every 50ms
     this.setState({done: false});
   }
 
@@ -92,6 +93,12 @@ class SceneView extends React.Component {
     }
   }
 
+  bump() {
+    const mag = 2;
+    if (Math.random() < 0.5) this.cartpole.update(mag);
+    else this.cartpole.update(-mag);
+  }
+
   /*****************************
    *  COMPONENT EVENT HANDLERS
    *****************************/
@@ -107,16 +114,19 @@ class SceneView extends React.Component {
           <button className="button" onClick={(e) => this.updateGains(DEFAULTS.KP, DEFAULTS.KI, DEFAULTS.KD)}>
             Reset Gains
           </button>
+          <button className="button" onClick={(e) => this.bump()}>
+            Bump
+          </button>
         </div>
         <div className="centered">
         <div className="slider-wrapper">
           <GainSlider label={"Kp"} value={this.state.kp} max={50}
                       onChange={(_, v) => this.updateGains(v, this.state.ki, this.state.kd)} />
 
-          <GainSlider label={"Ki"} value={this.state.ki} max={10}
+          <GainSlider label={"Ki"} value={this.state.ki} max={50}
                       onChange={(_, v) => this.updateGains(this.state.kp, v, this.state.kd)} />
 
-          <GainSlider label={"Kd"} value={this.state.kd} max={20}
+          <GainSlider label={"Kd"} value={this.state.kd} max={50}
                       onChange={(_, v) => this.updateGains(this.state.kp, this.state.ki, v)} />
         </div></div>
       </div>

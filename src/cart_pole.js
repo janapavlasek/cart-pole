@@ -39,19 +39,19 @@ class CartPole {
   /**
    * Constructor of CartPole.
    */
-  constructor() {
+  constructor(dt = 0.02) {
     // Constants that characterize the system.
     this.gravity = 9.8;
-    this.massCart = 1.0;
-    this.massPole = 0.1;
+    this.massCart = 0.5;  //1.0;
+    this.massPole = 0.2;  // 0.1;
     this.totalMass = this.massCart + this.massPole;
     this.cartWidth = 0.2;
     this.cartHeight = 0.1;
-    this.length = 0.5;
-    this.poleMoment = this.massPole * this.length;
+    this.length = 0.3;  // 0.5;
+    this.poleMoment = 0.006;  // this.massPole * this.length;
+    this.friction = 0.1;  // Friction
     this.forceMag = 10.0;
-    this.tau = 0.02;  // Seconds between state updates.
-    this.dt = 0.02;
+    this.dt = dt;
 
     // Threshold values, beyond which a simulation will be marked as failed.
     this.xThreshold = 2.4;
@@ -82,6 +82,42 @@ class CartPole {
     return [this.x, this.xDot, this.theta, this.thetaDot];
   }
 
+  derivatives(x, theta, dx, dtheta, action) {
+    const denom = this.poleMoment * (this.totalMass) + this.massPole * this.massCart * this.length**2;
+
+    //Parkers code
+    const xAcc = - (this.poleMoment + this.massPole * this.length**2) * this.friction * dx / denom +
+                 theta * this.gravity * this.massPole**2 * this.length**2 / denom +
+                 action * (this.poleMoment + this.massPole * this.length**2) / denom;
+    const thetaAcc = this.massPole * this.length * this.friction * dx / denom +
+                     theta * this.gravity * this.massPole * this.length * this.totalMass / denom +
+                     action * this.massPole * this.length / denom;
+
+    return {
+      xDot: dx,
+      thetaDot: dtheta,
+      xDotDot: xAcc,
+      thetaDotDot: thetaAcc
+    };
+  }
+
+  integrateRK(action) {
+    const k1 = this.derivatives(this.x, this.theta, this.xDot, this.thetaDot, action);
+    const k2 = this.derivatives(this.x + k1.xDot * this.dt / 2, this.theta + k1.thetaDot * this.dt / 2,
+                                this.xDot + k1.xDotDot * this.dt / 2, this.thetaDot + k1.thetaDotDot * this.dt / 2,
+                                action);
+    const k3 = this.derivatives(this.x + k2.xDot * this.dt / 2, this.theta + k2.thetaDot * this.dt / 2,
+                                this.xDot + k2.xDotDot * this.dt / 2, this.thetaDot + k2.thetaDotDot * this.dt / 2,
+                                action);
+    const k4 = this.derivatives(this.x + k3.xDot * this.dt, this.theta + k3.thetaDot * this.dt,
+                                this.xDot + k3.xDotDot * this.dt, this.thetaDot + k3.thetaDotDot * this.dt, action);
+
+    this.x += (k1.xDot + 2 * k2.xDot + 2 * k3.xDot + k4.xDot) * this.dt / 6;
+    this.theta += (k1.thetaDot + 2 * k2.thetaDot + 2 * k3.thetaDot + k4.thetaDot) * this.dt / 6;
+    this.xDot += (k1.xDotDot + 2 * k2.xDotDot + 2 * k3.xDotDot + k4.xDotDot) * this.dt / 6;
+    this.thetaDot += (k1.thetaDotDot + 2 * k2.thetaDotDot + 2 * k3.thetaDotDot + k4.thetaDotDot) * this.dt / 6;
+}
+
   /**
    * Update the cart-pole system using an action.
    * @param {number} action Only the sign of `action` matters.
@@ -89,27 +125,7 @@ class CartPole {
    *   A value <= 0 leads to a leftward force of the same fixed magnitude.
    */
   update(action) {
-    const force = action;
-    // const force = action > 0 ? this.forceMag : -this.forceMag;
-
-    const cosTheta = Math.cos(this.theta);
-    const sinTheta = Math.sin(this.theta);
-
-    //Parkers code
-    const xAcc = this.theta * this.gravity * this.massPole**2 * this.length**2 /
-                    (this.poleMoment * (this.totalMass) + this.massPole * this.massCart * this.length**2) +
-                 action * (this.poleMoment + this.massPole * this.length**2) /
-                    (this.poleMoment * (this.totalMass) + this.massPole * this.massCart * this.length**2)
-    const thetaAcc = this.theta * this.gravity * this.massPole * this.length * this.totalMass /
-                     (this.poleMoment * (this.totalMass) + this.massPole * this.massCart * this.length**2) +
-                 action * this.massPole * this.length /
-                     (this.poleMoment * (this.totalMass) + this.massPole * this.massCart * this.length**2)
-
-    // Update the four state variables, using Euler's method.
-    this.x += this.tau * this.xDot;
-    this.xDot += this.tau * xAcc;
-    this.theta += this.tau * this.thetaDot;
-    this.thetaDot += this.tau * thetaAcc;
+    this.integrateRK(action);
 
     return this.isDone();
   }
